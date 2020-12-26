@@ -29,7 +29,7 @@ function section() {
     let [where,slug] = fields.splice(0,2)
     let pid = newpid()
     html.push(`<article id=${pid}><h3>${slug}</h3></article>`)
-    let url = where=='view' ? `./${slug}.json` : `//${where}/${slug}.json`
+    let url = resolveURL(where, slug + '.json')
     let panel = {pid, where, slug, url}
     lineup.push(panel)
     fetch(url).then(res => res.json()).then(json => {panel.page = json; refresh(panel)})
@@ -53,7 +53,8 @@ function update() {
 async function refresh(panel) {
   types = await types
   console.log(types)
-  let url = panel.where=='view' ? `./favicon.png` : `//${panel.where}/favicon.png`
+  // let url = panel.where=='view' ? `./favicon.png` : `//${panel.where}/favicon.png`
+  let url = resolveURL(panel.where, 'favicon.png')
   let title = `<h3><img width=24 src="${url}"> ${panel.page.title}</h3>`
   let story = await Promise.all(panel.page.story.map(item => render(item,panel)))
   document.getElementById(panel.pid).innerHTML = `<div class=paper>${title}${story.join("\n")}</div>`
@@ -120,10 +121,41 @@ async function resolve(title, pid) {
 }
 
 function probe(where, slug) {
-  let site = where == 'view' ? location.host : where
-  return fetch(`//${site}/${slug}.json`)
+  let url = resolveURL(where, slug + '.json')
+  return fetch(url)
     .then(res => res.ok ? res.json() : null)
     .catch(err => null)
+}
+
+function resolveURL(where, resource) {
+  let site = where == 'view' ? location.host : where
+  // same protocol as origin, or something different?
+  if (site.length == 64 && !site.includes('.')) {
+    // looks like hyper:
+    if (location.protocol == 'hyper:') {
+      // same as origin, so
+      if (resource.endsWith('.json')) {
+        return `//${site}/wiki/${resource}`
+      } else {
+        return `//${site}/${resource}`
+      }
+    } else {
+      if (resource.endsWith('.json')) {
+        return `hyper://${site}/wiki/${resource}`
+      } else {
+        return `hyper://${site}/${resource}`
+      }
+    }
+  } else {
+    // looks like http(s):
+    if (location.protocol == 'http:' || location.protocol == 'https:') {
+      // assume same as origin
+      return `//${site}/${resource}`
+    } else {
+      // assume http, will need to distinguish https at some point (maybe)
+      return `http://${site}/${resource}`
+    }
+  }
 }
 
 function linkmark() {
