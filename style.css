@@ -21,6 +21,10 @@ section {
   scrollbar-width: none;
 }
 
+section::-webkit-scrollbar {
+  display: none;
+}
+
 article {
   flex: 0 0 400px; 
   position: relative;
